@@ -13,10 +13,12 @@ class Pannel extends StatelessWidget {
     Key key,
     @required this.score,
     @required this.best,
+    this.onRetry,
   }) : super(key: key);
 
   final int score;
   final int best;
+  final Function onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +45,7 @@ class Pannel extends StatelessWidget {
             child: Align(
               alignment: Alignment.centerLeft,
               child: RaisedButton(
-                onPressed: () => print('Restart Game'),
+                onPressed: () => onRetry(),
                 color: Color(0xff8f7a66),
                 child: Text(
                   'restart',

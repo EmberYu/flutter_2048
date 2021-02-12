@@ -1,48 +1,71 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/animation.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_2048/gameConfig.dart' as Game;
 
 class Grid extends StatefulWidget {
   Grid({
+    Key key,
+    this.x,
+    this.y,
     this.score,
-    @required this.x,
-    @required this.y,
   });
-  final int score;
+
   final int x;
   final int y;
-
+  final int score;
   @override
   _GridState createState() => _GridState();
 }
 
-class _GridState extends State<Grid> {
+class _GridState extends State<Grid> with SingleTickerProviderStateMixin {
   final double margin = 20.0.w;
   final double size = 150.0.w;
 
-  int x;
-  int y;
+  Animation<double> _scaleTween;
+  AnimationController controller;
+
   @override
   void initState() {
-    x = widget.x;
-    y = widget.y;
     super.initState();
+    controller = AnimationController(
+      duration: Duration(milliseconds: 100),
+      vsync: this,
+    );
+    _scaleTween = Tween<double>(begin: 0, end: 1).animate(controller)
+      ..addListener(() {
+        setState(() {});
+      });
+    controller.forward();
+    Future.delayed(Duration(seconds: 3), () {
+      print('delay');
+    });
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedPositioned(
-      duration: Duration(milliseconds: 300),
-      top: margin + (margin + size) * y,
-      left: margin + (margin + size) * x,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: Game.boxStyleMap[widget.score] ?? Game.boxStyleMap[2],
-        child: Center(
-          child: Text(
-            widget.score.toString(),
-            style: Game.textStyleMap[widget.score] ?? Game.textStyleMap[2],
+      duration: Duration(milliseconds: 200),
+      curve: Curves.ease,
+      top: margin + (margin + size) * widget.x,
+      left: margin + (margin + size) * widget.y,
+      child: Transform.scale(
+        scale: _scaleTween.value,
+        child: Container(
+          width: size,
+          height: size,
+          decoration: Game.boxStyleMap[widget.score] ?? Game.boxStyleMap[2],
+          child: Center(
+            child: Text(
+              widget.score.toString(),
+              style: Game.textStyleMap[widget.score] ?? Game.textStyleMap[2],
+            ),
           ),
         ),
       ),

@@ -1,4 +1,5 @@
 import 'dart:core';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_screenutil/screenutil_init.dart';
@@ -9,6 +10,12 @@ import 'package:flutter_2048/board.dart';
 import 'package:flutter_2048/grid.dart';
 import 'package:flutter_2048/footer.dart';
 
+enum SwipeDirection {
+  right,
+  left,
+  up,
+  down,
+}
 void main() {
   runApp(MyApp());
 }
@@ -34,15 +41,6 @@ class MyApp extends StatelessWidget {
 class MyHomePage extends StatefulWidget {
   MyHomePage({Key key, this.title}) : super(key: key);
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
   final String title;
 
   @override
@@ -50,27 +48,229 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<List<int>> matrix = [
-    [0, 0, 0, 0],
-    [0, 0, 0, 0],
-    [0, 2, 0, 0],
-    [0, 0, 0, 0],
-  ];
+  List<List<int>> matrix = [];
 
   int score = 0;
   int bestScore = 0;
+  final int size = 4;
 
-  void swipe(String dir) {}
+  @override
+  void initState() {
+    super.initState();
+    startGame();
+  }
 
-  List<Widget> drawGrid() {
+  void startGame() {
+    setState(() {
+      matrix = [
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+      ];
+      score = 0;
+      generateGrid();
+      // generateGrid();
+    });
+  }
+
+  void swipeCell(SwipeDirection dir) {
+    var newMatrix = copyMatrix();
+    rotateMatrix(dir, newMatrix);
+    if (canSwipe(newMatrix)) {
+      swipe(newMatrix);
+      unRotateMatrix(dir, newMatrix);
+      setState(() {
+        matrix = newMatrix;
+        generateGrid();
+      });
+    }
+  }
+
+  rotateMatrix(dir, matrix) {
+    if (dir == SwipeDirection.right) {
+      return matrix;
+    }
+    if (dir == SwipeDirection.left) {
+      for (var r = 0; r < size; r++) {
+        matrix[r] = matrix[r].reversed.toList();
+      }
+    }
+    if (dir == SwipeDirection.up) {
+      // 旋转90度
+      /*
+
+      1, 2, 3      1, 4, 7       7, 4, 1
+      4, 5, 6  ->  2, 5, 8   ->  8, 5, 2
+      7, 8, 9      3, 6, 9       9, 6, 3
+      
+      */
+      for (var r = 0; r < size - 1; r++) {
+        for (var c = r + 1; c < size; c++) {
+          var temp = matrix[r][c];
+          matrix[r][c] = matrix[c][r];
+          matrix[c][r] = temp;
+        }
+      }
+      for (var c = 0; c < size / 2; c++) {
+        for (var r = 0; r < size; r++) {
+          var temp = matrix[r][c];
+          matrix[r][c] = matrix[r][size - 1 - c];
+          matrix[r][size - 1 - c] = temp;
+        }
+      }
+    }
+    if (dir == SwipeDirection.down) {
+      // 旋转 -90度
+      /*
+
+       1, 2, 3      3, 2, 1       3, 6, 9
+       4, 5, 6  ->  6, 5, 4   ->  2, 5, 8
+       7, 8, 9      9, 8, 7       1, 4, 7
+
+      */
+      for (var r = 0; r < size; r++) {
+        matrix[r] = matrix[r].reversed.toList();
+      }
+      for (var r = 0; r < size - 1; r++) {
+        for (var c = r + 1; c < size; c++) {
+          var temp = matrix[r][c];
+          matrix[r][c] = matrix[c][r];
+          matrix[c][r] = temp;
+        }
+      }
+    }
+  }
+
+  unRotateMatrix(dir, matrix) {
+    if (dir == SwipeDirection.right) {
+      return matrix;
+    }
+    if (dir == SwipeDirection.left) {
+      for (var r = 0; r < size; r++) {
+        matrix[r] = matrix[r].reversed.toList();
+      }
+    }
+    if (dir == SwipeDirection.up) {
+      for (var r = 0; r < size; r++) {
+        matrix[r] = matrix[r].reversed.toList();
+      }
+      for (var r = 0; r < size - 1; r++) {
+        for (var c = r + 1; c < size; c++) {
+          var temp = matrix[r][c];
+          matrix[r][c] = matrix[c][r];
+          matrix[c][r] = temp;
+        }
+      }
+    }
+    if (dir == SwipeDirection.down) {
+      for (var r = 0; r < size - 1; r++) {
+        for (var c = r + 1; c < size; c++) {
+          var temp = matrix[r][c];
+          matrix[r][c] = matrix[c][r];
+          matrix[c][r] = temp;
+        }
+      }
+      for (var c = 0; c < size / 2; c++) {
+        for (var r = 0; r < size; r++) {
+          var temp = matrix[r][c];
+          matrix[r][c] = matrix[r][size - 1 - c];
+          matrix[r][size - 1 - c] = temp;
+        }
+      }
+    }
+  }
+
+  swipe(matrix) {
+    // 向右滑动
+    for (var r = 0; r < matrix.length; r++) {
+      var row = matrix[r].where((e) => e != 0).toList();
+      for (var i = row.length - 1; i > 0; i--) {
+        if (row[i] == row[i - 1]) {
+          row.removeAt(i);
+          i--;
+          row[i] = row[i] * 2;
+          score += row[i];
+        }
+      }
+      while (row.length < size) {
+        row.insert(0, 0);
+      }
+      matrix[r] = row;
+    }
+    return matrix;
+  }
+
+  List<List<int>> copyMatrix() {
+    List<List<int>> newMatrix = [];
+    for (var r = 0; r < size; r++) {
+      newMatrix.add([]);
+      for (var c = 0; c < size; c++) {
+        newMatrix[r].add(matrix[r][c]);
+      }
+    }
+    return newMatrix;
+  }
+
+  bool canSwipe(matrix) {
+    // 判断是否可以向右滑动
+    for (var r = 0; r < matrix.length; r++) {
+      var c = 0;
+      while (true) {
+        if (c == size - 1) {
+          break;
+        }
+        var currScore = matrix[r][c];
+        var nextScore = matrix[r][c + 1];
+        c++;
+        if (currScore == 0) {
+          continue;
+        }
+        if (nextScore == 0) {
+          // 中间有0，可以滑动
+          return true;
+        }
+        if (currScore == nextScore) {
+          // 值相等，可以滑动合并
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  dynamic generateGrid() {
+    List<List<int>> emptyStack = [];
+    for (var r = 0; r < matrix.length; r++) {
+      for (var c = 0; c < matrix[r].length; c++) {
+        if (matrix[r][c] == 0) {
+          emptyStack.add(
+            [r, c],
+          );
+        }
+      }
+    }
+    if (emptyStack.length == 0) {
+      return null;
+    }
+    final targetIndex = Random().nextInt(emptyStack.length);
+    final targetX = emptyStack[targetIndex][0];
+    final targetY = emptyStack[targetIndex][1];
+    final number = (Random().nextInt(2) + 1) * 2;
+    setState(() {
+      matrix[targetX][targetY] = number;
+    });
+  }
+
+  List<Widget> get grids {
     List<Widget> grids = [Board()];
-    for (var col = 0; col < matrix.length; col++) {
-      for (var row = 0; row < matrix[col].length; row++) {
-        var score = matrix[row][col];
+    for (var r = 0; r < matrix.length; r++) {
+      for (var c = 0; c < matrix[r].length; c++) {
+        var score = matrix[r][c];
         if (score > 0) {
           grids.add(Grid(
-            x: col,
-            y: row,
+            x: r,
+            y: c,
             score: score,
           ));
         }
@@ -81,33 +281,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
       body: Column(
-        // Column is also a layout widget. It takes a list of children and
-        // arranges them vertically. By default, it sizes itself to fit its
-        // children horizontally, and tries to be as tall as its parent.
-        //
-        // Invoke "debug painting" (press "p" in the console, choose the
-        // "Toggle Debug Paint" action from the Flutter Inspector in Android
-        // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-        // to see the wireframe for each widget.
-        //
-        // Column has various properties to control how it sizes itself and
-        // how it positions its children. Here we use mainAxisAlignment to
-        // center the children vertically; the main axis here is the vertical
-        // axis because Columns are vertical (the cross axis would be
-        // horizontal).
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
@@ -117,21 +295,23 @@ class _MyHomePageState extends State<MyHomePage> {
               child: Column(
                 children: <Widget>[
                   Pannel(
-                    score: score,
-                    best: bestScore,
-                  ),
+                      score: score,
+                      best: bestScore,
+                      onRetry: () {
+                        startGame();
+                      }),
                   SwipeGestureRecognizer(
                     onSwipeDown: () {
-                      print('Swipe Down');
+                      swipeCell(SwipeDirection.down);
                     },
                     onSwipeUp: () {
-                      print('Swipe Up');
+                      swipeCell(SwipeDirection.up);
                     },
                     onSwipeLeft: () {
-                      print('Swipe Left');
+                      swipeCell(SwipeDirection.left);
                     },
                     onSwipeRight: () {
-                      print('Swipe Right');
+                      swipeCell(SwipeDirection.right);
                     },
                     child: Container(
                       margin: EdgeInsets.symmetric(vertical: 10.0),
@@ -142,11 +322,15 @@ class _MyHomePageState extends State<MyHomePage> {
                         color: Color(0xffbbada0),
                       ),
                       child: Stack(
-                        children: drawGrid(),
+                        children: [Board(), ...grids],
                       ),
                     ),
                   ),
                   Footer(),
+                  Text(matrix[0].toString()),
+                  Text(matrix[1].toString()),
+                  Text(matrix[2].toString()),
+                  Text(matrix[3].toString()),
                 ],
               ),
             ),
