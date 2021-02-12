@@ -37,9 +37,6 @@ class _GridState extends State<Grid> with SingleTickerProviderStateMixin {
         setState(() {});
       });
     controller.forward();
-    Future.delayed(Duration(seconds: 3), () {
-      print('delay');
-    });
   }
 
   @override
