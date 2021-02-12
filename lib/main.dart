@@ -70,7 +70,7 @@ class _MyHomePageState extends State<MyHomePage> {
       ];
       score = 0;
       generateGrid();
-      // generateGrid();
+      generateGrid();
     });
   }
 
