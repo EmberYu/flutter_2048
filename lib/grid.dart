@@ -32,11 +32,14 @@ class _GridState extends State<Grid> with SingleTickerProviderStateMixin {
       duration: Duration(milliseconds: 100),
       vsync: this,
     );
-    _scaleTween = Tween<double>(begin: 0, end: 1).animate(controller)
-      ..addListener(() {
-        setState(() {});
-      });
-    controller.forward();
+    _scaleTween = Tween<double>(begin: 0, end: 1)
+        .animate(CurvedAnimation(parent: controller, curve: Curves.elasticInOut)
+          ..addListener(() {
+            setState(() {});
+          }));
+    Future.delayed(Duration(milliseconds: 50), () {
+      controller.forward();
+    });
   }
 
   @override
@@ -48,8 +51,8 @@ class _GridState extends State<Grid> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return AnimatedPositioned(
-      duration: Duration(milliseconds: 000),
-      curve: Curves.ease,
+      duration: Duration(milliseconds: 100),
+      curve: Curves.easeIn,
       top: margin + (margin + size) * widget.x,
       left: margin + (margin + size) * widget.y,
       child: Transform.scale(

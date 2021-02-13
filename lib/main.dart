@@ -1,6 +1,8 @@
 import 'dart:core';
 import 'dart:math';
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_screenutil/screenutil_init.dart';
 import 'package:flutter_2048/swipeDector.dart';
@@ -9,6 +11,23 @@ import 'package:flutter_2048/pannel.dart';
 import 'package:flutter_2048/board.dart';
 import 'package:flutter_2048/grid.dart';
 import 'package:flutter_2048/footer.dart';
+
+class Cell {
+  static int _incrementKey = 0;
+  Cell(this.score) {
+    this.increKey = _incrementKey++;
+  }
+  int score;
+  int increKey;
+}
+
+class MergedCell {
+  int x;
+  int y;
+  int score;
+  int increKey;
+  MergedCell(this.score, {this.x, this.y, this.increKey});
+}
 
 enum SwipeDirection {
   right,
@@ -48,33 +67,47 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<List<int>> matrix = [];
+  List<List<Cell>> matrix = [];
+  List<MergedCell> mergedCells = [];
 
   int score = 0;
   int bestScore = 0;
+  bool gameEnd = false;
+  bool isSuccess = false;
+  Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
   final int size = 4;
 
   @override
   void initState() {
     super.initState();
     startGame();
+    _prefs.then((prefs) {
+      setState(() {
+        bestScore = prefs.getInt('best') ?? 0;
+      });
+    });
   }
 
   void startGame() {
     setState(() {
+      gameEnd = false;
+      isSuccess = false;
       matrix = [
-        [0, 0, 0, 0],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0],
+        [Cell(0), Cell(0), Cell(0), Cell(0)],
+        [Cell(0), Cell(0), Cell(0), Cell(0)],
+        [Cell(0), Cell(0), Cell(0), Cell(0)],
+        [Cell(0), Cell(0), Cell(0), Cell(0)],
       ];
       score = 0;
-      generateGrid();
-      generateGrid();
+      insertGrid();
+      insertGrid();
     });
   }
 
   void swipeCell(SwipeDirection dir) {
+    if (gameEnd || isSuccess) {
+      return;
+    }
     var newMatrix = copyMatrix();
     rotateMatrix(dir, newMatrix);
     if (canSwipe(newMatrix)) {
@@ -82,9 +115,46 @@ class _MyHomePageState extends State<MyHomePage> {
       unRotateMatrix(dir, newMatrix);
       setState(() {
         matrix = newMatrix;
-        generateGrid();
+        insertGrid();
+        if (isGameEnd()) {
+          setState(() {
+            gameEnd = true;
+          });
+        }
       });
     }
+    if (score >= bestScore) {
+      _prefs.then((prefs) {
+        prefs.setInt('best', score);
+      });
+    }
+  }
+
+  bool isGameEnd() {
+    bool canPointMergeRecursion(int x, int y) {
+      var currPoint = matrix[x][y].score;
+      var rightPoint = (y < size - 1) ? matrix[x][y + 1].score : null;
+      var bottomPoint = (x < size - 1) ? matrix[x + 1][y].score : null;
+      if (currPoint == 0) {
+        return true;
+      }
+      if (currPoint == rightPoint || currPoint == bottomPoint) {
+        return true;
+      }
+      if (rightPoint == null && bottomPoint == null) {
+        return false;
+      }
+      if (rightPoint == null && bottomPoint != null) {
+        return canPointMergeRecursion(x + 1, y);
+      }
+      if (rightPoint != null && bottomPoint == null) {
+        return canPointMergeRecursion(x, y + 1);
+      }
+      return canPointMergeRecursion(x + 1, y) ||
+          canPointMergeRecursion(x, y + 1);
+    }
+
+    return !canPointMergeRecursion(0, 0);
   }
 
   rotateMatrix(dir, matrix) {
@@ -143,12 +213,18 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   unRotateMatrix(dir, matrix) {
+    // 要把mergedCell的位置转置到正确位置
     if (dir == SwipeDirection.right) {
       return matrix;
     }
     if (dir == SwipeDirection.left) {
       for (var r = 0; r < size; r++) {
         matrix[r] = matrix[r].reversed.toList();
+      }
+
+      for (var index = 0; index < mergedCells.length; index++) {
+        var mergedCell = mergedCells[index];
+        mergedCell.y = size - 1 - mergedCell.y;
       }
     }
     if (dir == SwipeDirection.up) {
@@ -161,6 +237,14 @@ class _MyHomePageState extends State<MyHomePage> {
           matrix[r][c] = matrix[c][r];
           matrix[c][r] = temp;
         }
+      }
+
+      for (var index = 0; index < mergedCells.length; index++) {
+        var mergedCell = mergedCells[index];
+        var temp = mergedCell.x;
+        mergedCell.y = size - 1 - mergedCell.y;
+        mergedCell.x = mergedCell.y;
+        mergedCell.y = temp;
       }
     }
     if (dir == SwipeDirection.down) {
@@ -178,6 +262,14 @@ class _MyHomePageState extends State<MyHomePage> {
           matrix[r][size - 1 - c] = temp;
         }
       }
+
+      for (var index = 0; index < mergedCells.length; index++) {
+        var mergedCell = mergedCells[index];
+        var temp = mergedCell.x;
+        mergedCell.x = mergedCell.y;
+        mergedCell.y = temp;
+        mergedCell.y = size - 1 - mergedCell.y;
+      }
     }
   }
 
@@ -185,24 +277,43 @@ class _MyHomePageState extends State<MyHomePage> {
     // 向右滑动
     for (var r = 0; r < size; r++) {
       for (var c = size - 1; c > 0; c--) {
-        var currScore = matrix[r][c];
+        var currCell = matrix[r][c];
         for (var index = c - 1; index >= 0; index--) {
-          var prevScore = matrix[r][index];
-          if (currScore == 0 && prevScore != 0) {
-            matrix[r][index] = currScore;
-            matrix[r][c] = prevScore;
-            currScore = prevScore;
+          var prevCell = matrix[r][index];
+          if (currCell.score == 0 && prevCell.score != 0) {
+            matrix[r][index] = currCell;
+            matrix[r][c] = prevCell;
             c++;
             break;
           }
 
-          if (currScore != 0 && currScore == prevScore) {
-            setState(() {
-              score += currScore;
-            });
-            currScore *= 2;
-            matrix[r][index] = 0;
-            matrix[r][c] = currScore;
+          if (currCell.score != 0) {
+            if (prevCell.score == 0) {
+              continue;
+            }
+            if (currCell.score == prevCell.score) {
+              setState(() {
+                score += currCell.score;
+                if (score >= Game.goal) {
+                  isSuccess = true;
+                }
+              });
+              mergedCells.add(MergedCell(
+                currCell.score,
+                x: r,
+                y: c,
+                increKey: currCell.increKey,
+              ));
+              mergedCells.add(MergedCell(
+                matrix[r][index].score,
+                x: r,
+                y: c,
+                increKey: matrix[r][index].increKey,
+              ));
+              matrix[r][c] = Cell(currCell.score * 2);
+              matrix[r][index] = Cell(0);
+            }
+            break;
           }
         }
       }
@@ -210,8 +321,8 @@ class _MyHomePageState extends State<MyHomePage> {
     return matrix;
   }
 
-  List<List<int>> copyMatrix() {
-    List<List<int>> newMatrix = [];
+  List<List<Cell>> copyMatrix() {
+    List<List<Cell>> newMatrix = [];
     for (var r = 0; r < size; r++) {
       newMatrix.add([]);
       for (var c = 0; c < size; c++) {
@@ -229,8 +340,8 @@ class _MyHomePageState extends State<MyHomePage> {
         if (c == size - 1) {
           break;
         }
-        var currScore = matrix[r][c];
-        var nextScore = matrix[r][c + 1];
+        var currScore = matrix[r][c].score;
+        var nextScore = matrix[r][c + 1].score;
         c++;
         if (currScore == 0) {
           continue;
@@ -248,11 +359,11 @@ class _MyHomePageState extends State<MyHomePage> {
     return false;
   }
 
-  dynamic generateGrid() {
+  dynamic insertGrid() {
     List<List<int>> emptyStack = [];
     for (var r = 0; r < matrix.length; r++) {
       for (var c = 0; c < matrix[r].length; c++) {
-        if (matrix[r][c] == 0) {
+        if (matrix[r][c].score == 0) {
           emptyStack.add(
             [r, c],
           );
@@ -267,17 +378,29 @@ class _MyHomePageState extends State<MyHomePage> {
     final targetY = emptyStack[targetIndex][1];
     final number = (Random().nextInt(2) + 1) * 2;
     setState(() {
-      matrix[targetX][targetY] = number;
+      matrix[targetX][targetY] = Cell(number);
     });
   }
 
-  List<Widget> get grids {
-    List<Widget> grids = [Board()];
+  List<Grid> get grids {
+    List<Grid> grids = [];
+    for (var r = 0; r < mergedCells.length; r++) {
+      var mergedCell = mergedCells[r];
+      grids.add(Grid(
+        key: Key(mergedCell.increKey.toString()),
+        x: mergedCell.x,
+        y: mergedCell.y,
+        score: mergedCell.score,
+      ));
+    }
+
     for (var r = 0; r < matrix.length; r++) {
       for (var c = 0; c < matrix[r].length; c++) {
-        var score = matrix[r][c];
+        var cell = matrix[r][c];
+        var score = cell.score;
         if (score > 0) {
           grids.add(Grid(
+            key: Key(cell.increKey.toString()),
             x: r,
             y: c,
             score: score,
@@ -285,6 +408,10 @@ class _MyHomePageState extends State<MyHomePage> {
         }
       }
     }
+
+    setState(() {
+      this.mergedCells = [];
+    });
     return grids;
   }
 
@@ -306,6 +433,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   Pannel(
                       score: score,
                       best: bestScore,
+                      isGameEnd: gameEnd,
                       onRetry: () {
                         startGame();
                       }),
@@ -336,10 +464,10 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   ),
                   Footer(),
-                  Text(matrix[0].toString()),
-                  Text(matrix[1].toString()),
-                  Text(matrix[2].toString()),
-                  Text(matrix[3].toString()),
+                  // Text(matrix[0].map((cell) => cell.score).toString()),
+                  // Text(matrix[1].map((cell) => cell.score).toString()),
+                  // Text(matrix[2].map((cell) => cell.score).toString()),
+                  // Text(matrix[3].map((cell) => cell.score).toString()),
                 ],
               ),
             ),
