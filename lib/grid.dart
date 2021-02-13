@@ -9,7 +9,7 @@ class Grid extends StatefulWidget {
     this.x,
     this.y,
     this.score,
-  });
+  }) : super(key: key);
 
   final int x;
   final int y;
