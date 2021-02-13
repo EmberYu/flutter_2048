@@ -183,20 +183,29 @@ class _MyHomePageState extends State<MyHomePage> {
 
   swipe(matrix) {
     // 向右滑动
-    for (var r = 0; r < matrix.length; r++) {
-      var row = matrix[r].where((e) => e != 0).toList();
-      for (var i = row.length - 1; i > 0; i--) {
-        if (row[i] == row[i - 1]) {
-          row.removeAt(i);
-          i--;
-          row[i] = row[i] * 2;
-          score += row[i];
+    for (var r = 0; r < size; r++) {
+      for (var c = size - 1; c > 0; c--) {
+        var currScore = matrix[r][c];
+        for (var index = c - 1; index >= 0; index--) {
+          var prevScore = matrix[r][index];
+          if (currScore == 0 && prevScore != 0) {
+            matrix[r][index] = currScore;
+            matrix[r][c] = prevScore;
+            currScore = prevScore;
+            c++;
+            break;
+          }
+
+          if (currScore != 0 && currScore == prevScore) {
+            setState(() {
+              score += currScore;
+            });
+            currScore *= 2;
+            matrix[r][index] = 0;
+            matrix[r][c] = currScore;
+          }
         }
       }
-      while (row.length < size) {
-        row.insert(0, 0);
-      }
-      matrix[r] = row;
     }
     return matrix;
   }

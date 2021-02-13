@@ -48,7 +48,7 @@ class _GridState extends State<Grid> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return AnimatedPositioned(
-      duration: Duration(milliseconds: 200),
+      duration: Duration(milliseconds: 000),
       curve: Curves.ease,
       top: margin + (margin + size) * widget.x,
       left: margin + (margin + size) * widget.y,
