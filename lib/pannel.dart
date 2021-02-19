@@ -64,7 +64,7 @@ class Pannel extends StatelessWidget {
                   onPressed: () => onRetry(),
                   color: Color(0xff8f7a66),
                   child: Text(
-                    'restart',
+                    'start',
                     style: TextStyle(color: Colors.white, fontSize: 20.0),
                   ),
                 ),

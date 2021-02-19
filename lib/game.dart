@@ -57,11 +57,6 @@ class _MyGameState extends State<MyGame> {
   void initState() {
     super.initState();
     startGame();
-    _prefs.then((prefs) {
-      setState(() {
-        bestScore = prefs.getInt('best') ?? 0;
-      });
-    });
   }
 
   void startGame() {
@@ -77,6 +72,11 @@ class _MyGameState extends State<MyGame> {
       score = 0;
       insertGrid();
       insertGrid();
+      _prefs.then((prefs) {
+        setState(() {
+          bestScore = prefs.getInt('best') ?? 0;
+        });
+      });
     });
   }
 
