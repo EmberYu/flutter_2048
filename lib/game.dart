@@ -270,7 +270,7 @@ class _MyGameState extends State<MyGame> {
             if (currCell.score == prevCell.score) {
               setState(() {
                 score += currCell.score;
-                if (score >= Game.goal) {
+                if (currCell.score * 2 >= Game.goal) {
                   isSuccess = true;
                 }
               });
@@ -406,6 +406,7 @@ class _MyGameState extends State<MyGame> {
                     score: score,
                     best: bestScore,
                     isGameEnd: gameEnd,
+                    isSuccess: isSuccess,
                     onRetry: () {
                       startGame();
                     }),

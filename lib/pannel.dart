@@ -27,12 +27,14 @@ class Pannel extends StatelessWidget {
     @required this.score,
     @required this.best,
     this.isGameEnd = false,
+    this.isSuccess = false,
     this.onRetry,
   }) : super(key: key);
 
   final int score;
   final int best;
   final bool isGameEnd;
+  final bool isSuccess;
   final Function onRetry;
 
   @override
@@ -72,7 +74,7 @@ class Pannel extends StatelessWidget {
               Container(
                   child: isGameEnd
                       ? Text('Oooops!!', style: looseTextStyle)
-                      : score >= Game.goal
+                      : isSuccess
                           ? Text('Congratulations!!', style: winTextStyle)
                           : Text('')),
             ],
