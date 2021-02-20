@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 Color backgroundColor = Color(0xfffaf8ef);
 Color pannelBackgroundColor = Color(0xffbbada0);
-int goal = 64;
+int goal = 2048;
 Map<int, TextStyle> textStyleMap = {
   2: TextStyle(
     fontSize: 40.0,
