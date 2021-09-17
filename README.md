@@ -1,6 +1,6 @@
 # flutter_2048
 
-- [demo](https://unkindledG.github.io/flutter_2048/web/#/)
+- [demo](https://EmberYu.github.io/flutter_2048/web/#/)
 
 flutter version: 1.20.3
 
